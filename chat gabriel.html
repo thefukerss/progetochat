@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transmissão da Webcam</title>
+</head>
+<body>
+    <h1>Transmissão da Webcam</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    
+    <script>
+        // Acessa a webcam do usuário
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                var video = document.getElementById('video');
+                video.srcObject = stream;
+                video.play();
+            })
+            .catch(function(error) {
+                console.error('Erro ao acessar a webcam:', error);
+            });
+    </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Online</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    .chat-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    .chat-message {
+        margin-bottom: 10px;
+    }
+    .chat-message .username {
+        font-weight: bold;
+        color: #333;
+    }
+    .chat-message .message {
+        margin-left: 10px;
+        color: #666;
+    }
+    .chat-input {
+        display: flex;
+        margin-top: 20px;
+    }
+    .chat-input input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px 0 0 5px;
+    }
+    .chat-input button {
+        padding: 10px 20px;
+        border: 1px solid #ccc;
+        border-radius: 0 5px 5px 0;
+        background-color: #f4f4f4;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-message">
+        <span class="username">User1:</span>
+        <span class="message">Olá, tudo bem?</span>
+    </div>
+    <div class="chat-message">
+        <span class="username">User2:</span>
+        <span class="message">Tudo ótimo, e você?</span>
+    </div>
+    <div class="chat-message">
+        <span class="username">User1:</span>
+        <span class="message">Estou bem também, obrigado.</span>
+    </div>
+    <div class="chat-input">
+        <input type="text" placeholder="Digite sua mensagem...">
+        <button>Enviar</button>
+    </div>
+</div>
+</body>
+</html>
