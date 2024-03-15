@@ -1,95 +1,130 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Transmissão da Webcam</title>
-</head>
-<body>
-    <h1>Transmissão da Webcam</h1>
-    <video id="video" width="640" height="480" autoplay></video>
-    
-    <script>
-        // Acessa a webcam do usuário
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(function(stream) {
-                var video = document.getElementById('video');
-                video.srcObject = stream;
-                video.play();
-            })
-            .catch(function(error) {
-                console.error('Erro ao acessar a webcam:', error);
-            });
-    </script>
-</body>
-</html>
-
-<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat Online</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    .chat-container {
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 20px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-    }
-    .chat-message {
-        margin-bottom: 10px;
-    }
-    .chat-message .username {
-        font-weight: bold;
-        color: #333;
-    }
-    .chat-message .message {
-        margin-left: 10px;
-        color: #666;
-    }
-    .chat-input {
-        display: flex;
-        margin-top: 20px;
-    }
-    .chat-input input[type="text"] {
-        flex: 1;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px 0 0 5px;
-    }
-    .chat-input button {
-        padding: 10px 20px;
-        border: 1px solid #ccc;
-        border-radius: 0 5px 5px 0;
-        background-color: #f4f4f4;
-        cursor: pointer;
-    }
-</style>
+<title>Transmissão ao Vivo</title>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 </head>
 <body>
-<div class="chat-container">
-    <div class="chat-message">
-        <span class="username">User1:</span>
-        <span class="message">Olá, tudo bem?</span>
-    </div>
-    <div class="chat-message">
-        <span class="username">User2:</span>
-        <span class="message">Tudo ótimo, e você?</span>
-    </div>
-    <div class="chat-message">
-        <span class="username">User1:</span>
-        <span class="message">Estou bem também, obrigado.</span>
-    </div>
-    <div class="chat-input">
-        <input type="text" placeholder="Digite sua mensagem...">
-        <button>Enviar</button>
-    </div>
-</div>
+<video id="localVideo" autoplay></video>
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<script src="https://cdn.webrtc-experiment.com/socket.io.js"> </script>
+<script src="https://cdn.webrtc-experiment.com/IceServersHandler.js"> </script>
+<script>
+    var config = {
+        openSocket: function (config) {
+            var SIGNALING_SERVER = 'https://socketio-over-nodejs2.herokuapp.com:443/';
+            var channel = config.channel || location.href.replace(/\/|:|#|%|\.|\[|\]/g, '');
+            var sender = Math.round(Math.random() * 999999999) + 999999999;
+
+            io.connect(SIGNALING_SERVER).emit('new-channel', {
+                channel: channel,
+                sender: sender
+            });
+
+            var socket = io.connect(SIGNALING_SERVER + channel);
+            socket.channel = channel;
+            socket.on('connect', function () {
+                if (config.callback) config.callback(socket);
+            });
+
+            socket.send = function (message) {
+                socket.emit('message', {
+                    sender: sender,
+                    data: message
+                });
+            };
+
+            socket.on('message', config.onmessage);
+        },
+        onRemoteStream: function (media) {
+            var video = media.video;
+            video.setAttribute('controls', true);
+            document.body.appendChild(video);
+        },
+        onRoomFound: function (room) {
+            var alreadyExist = document.querySelector('button[data-broadcaster="' + room.broadcaster + '"]');
+            if (alreadyExist) return;
+
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td><strong>' + room.roomName + '</strong> shared a conferencing room with you!</td>' +
+                '<td><button class="join">Join</button></td>';
+            document.querySelector('#rooms-list').appendChild(tr);
+
+            var joinRoomButton = tr.querySelector('.join');
+            joinRoomButton.setAttribute('data-broadcaster', room.broadcaster);
+            joinRoomButton.setAttribute('data-roomToken', room.broadcaster);
+            joinRoomButton.onclick = function () {
+                this.disabled = true;
+
+                var broadcaster = this.getAttribute('data-broadcaster');
+                var roomToken = this.getAttribute('data-roomToken');
+                captureUserMedia(function () {
+                    conferenceUI.joinRoom({
+                        roomToken: roomToken,
+                        joinUser: broadcaster
+                    });
+                });
+            };
+        },
+        onChannelOpened: function (/* channel */) {
+            var hash = window.location.hash.replace('#', '');
+            if (hash.length && isInt(hash)) {
+                conferenceUI.joinRoom({
+                    roomToken: hash,
+                    joinUser: true
+                });
+                return;
+            }
+
+            conferenceUI.openRoom();
+        },
+        onChannelMessage: function (data) {
+            if (!conferenceUI) return;
+            if (data.type !== 'text-chat') return;
+
+            conferenceUI.appendText(data.sender, data.message);
+        }
+    };
+
+    function isInt(value) {
+        return !isNaN(parseInt(value, 10));
+    }
+
+    var conferenceUI = conference(config);
+    var chatOutput = document.getElementById('chat-output');
+    var chatInput = document.getElementById('chat-input');
+
+    document.getElementById('share-screen').onclick = function () {
+        captureUserMedia(function () {
+            conferenceUI.createRoom({
+                roomName: 'Anonymous'
+            });
+        });
+    };
+
+    document.getElementById('open-or-join-room').onclick = function () {
+        captureUserMedia(function () {
+            conferenceUI.openOrJoin({
+                roomName: 'Anonymous'
+            });
+        });
+    };
+
+    function captureUserMedia(callback) {
+        var video = document.getElementById('localVideo');
+        navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+            .then(function (stream) {
+                video.srcObject = stream;
+                video.onloadedmetadata = function () {
+                    callback(stream);
+                };
+            })
+            .catch(function (error) {
+                console.error('Erro ao acessar a câmera:', error);
+            });
+    }
+
+</script>
 </body>
 </html>
